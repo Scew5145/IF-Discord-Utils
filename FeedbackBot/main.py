@@ -6,8 +6,8 @@ import os
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
 TOKEN = os.environ["DISCORD_TOKEN"]
-GUILD_ID = os.environ["DISCORD_GUILD_ID"]
-ROLE_ID = os.environ["DISCORD_ROLE_ID"]
+GUILD_ID = int(os.environ["DISCORD_GUILD_ID"])
+ROLE_ID = int(os.environ["DISCORD_ROLE_ID"])
 
 intents = discord.Intents.default()
 intents.messages = True
