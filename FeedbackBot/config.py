@@ -1,4 +1,0 @@
-TOKEN = 'NONE'
-
-GUILD_ID = 1
-ROLE_ID = 2
