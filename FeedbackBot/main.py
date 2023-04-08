@@ -2,7 +2,12 @@ import discord
 from discord import app_commands
 from discord.utils import get
 import random
-from config import TOKEN, GUILD_ID, ROLE_ID
+import os
+
+# from config import TOKEN, GUILD_ID, ROLE_ID
+TOKEN = os.environ["DISCORD_TOKEN"]
+GUILD_ID = os.environ["DISCORD_GUILD_ID"]
+ROLE_ID = os.environ["DISCORD_ROLE_ID"]
 
 intents = discord.Intents.default()
 intents.messages = True
