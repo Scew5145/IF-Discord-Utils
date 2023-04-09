@@ -54,7 +54,7 @@ async def feedbackpls(interaction: discord.Interaction):
     tags = [f"<@{member.id}>" for member in sample]
     # tags = ["bacon"]
     joined_tags = '\n'.join(tags)
-    await interaction.response.send_message(f"YOU HAVE BEEN SUMMONED:\n{joined_tags}", ephemeral=False)
+    await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
 
 
 def chunk_array(in_list, n):
