@@ -38,7 +38,7 @@ async def feedbackpls(interaction: discord.Interaction):
     role = get(guild.roles, id=ROLE_ID)
     sample_count = 5
     sample = []
-    allowed_ping_statuses = [discord.Status.online, discord.Status.idle, discord.Status.dnd]
+    allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
 
     # splitting requests for the sake of the API call
