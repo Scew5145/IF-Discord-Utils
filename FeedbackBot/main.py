@@ -40,13 +40,14 @@ async def feedbackpls(interaction: discord.Interaction):
     sample = []
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
-
     # splitting requests for the sake of the API call
     split_ids = list(chunk_array(ids, 100))
     feedback_users = []
     for group in split_ids:
         feedback_users += (await guild.query_members(user_ids=group, presences=True))
     online_users = [member for member in feedback_users if member.status in allowed_ping_statuses]
+    if interaction.user in online_users:
+        online_users.remove(interaction.user)
     if sample_count <= len(online_users):
         sample = random.sample(online_users, sample_count)
     else:
