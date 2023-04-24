@@ -36,7 +36,7 @@ tree = app_commands.CommandTree(feebas)
 async def feedbackpls(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    sample_count = 5
+    sample_count = 9
     sample = []
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
