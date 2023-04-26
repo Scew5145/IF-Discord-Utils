@@ -30,13 +30,14 @@ class FeebasClient(discord.Client):
 
 feebas = FeebasClient(intents=intents)
 tree = app_commands.CommandTree(feebas)
+sample_count = 9
 
 
-@tree.command(guild=discord.Object(id=GUILD_ID), description="tag 5 random members with the feedback giver role")
+@tree.command(guild=discord.Object(id=GUILD_ID), description=f"tag {sample_count} random members with the feedback giver role")
 async def feedbackpls(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    sample_count = 9
+
     sample = []
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
@@ -52,6 +53,8 @@ async def feedbackpls(interaction: discord.Interaction):
         sample = random.sample(online_users, sample_count)
     else:
         sample = online_users
+
+    print([(user.name, user.status) for user in sample])
     tags = [f"<@{member.id}>" for member in sample]
     # tags = ["bacon"]
     joined_tags = '\n'.join(tags)
