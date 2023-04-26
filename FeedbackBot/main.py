@@ -54,7 +54,8 @@ async def feedbackpls(interaction: discord.Interaction):
     else:
         sample = online_users
 
-    print([(user.name, user.status) for user in sample])
+    # Used this to check statuses, and it looks like sometimes discord will cache status on the client, but these seem to be accurate most of the time
+    # print([(user.name, user.status) for user in sample])
     tags = [f"<@{member.id}>" for member in sample]
     # tags = ["bacon"]
     joined_tags = '\n'.join(tags)
