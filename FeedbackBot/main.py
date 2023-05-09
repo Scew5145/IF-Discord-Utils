@@ -30,7 +30,7 @@ class FeebasClient(discord.Client):
 
 feebas = FeebasClient(intents=intents)
 tree = app_commands.CommandTree(feebas)
-sample_count = 9
+sample_count = 7
 
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"tag {sample_count} random members with the feedback giver role")
