@@ -76,17 +76,23 @@ async def get_top_sprites(interaction: discord.Interaction):
     week_ago = now - timedelta(days=7)
     top_sprites = list()
     tiebreak_counter = 0
-    await interaction.response.defer(ephemeral=False)
+    message_counter = 0
+    await interaction.response.send_message("This operation will take a while! Check back in this channel in half an hour.", ephemeral=True)
     async for message in gallery.history(after=week_ago, limit=None):
+        message_counter += 1
+        if message_counter % 250 == 0:
+            await interaction.channel.send(f"Parsed {message_counter} gallery posts")
         reaction_ids = set()
-        print(f"{message.content} \n done")
+        # print(f"{message.content} \n done")
         # api usage optimization: if the sum of all reaction.count is < the X most reacted to sprite,
         # we know that we can skip this message for the top X number sprites
         reaction_sum = sum(reaction.count for reaction in message.reactions)
         if len(top_sprites) == top_count and reaction_sum < top_sprites[0][0]:
             continue
+        elif len(top_sprites) != 0:
+            print(f"reaction sum of {reaction_sum} for {message.content} passed minimum of {top_sprites[0][0]}")
         for reaction in message.reactions:
-            print(reaction.emoji, ":", reaction.count)
+            # print(reaction.emoji, ":", reaction.count)
             async for user in reaction.users():
                 reaction_ids.add(user.id)
 
@@ -94,13 +100,15 @@ async def get_top_sprites(interaction: discord.Interaction):
         if len(top_sprites) > top_count:
             heapq.heappop(top_sprites)
         tiebreak_counter += 1
+
     print([(item[2].content, item[0]) for item in top_sprites])
     output_message = ""
     output_largest = heapq.nlargest(top_count, top_sprites, key=lambda x: x[0])
     for i in range(len(output_largest)):
-        line = f"{len(output_largest) - i}: [{output_largest[i][2].content}]({output_largest[i][2].jump_url}) | Unique Reactions: {output_largest[i][0]}"
+        line = f"{len(output_largest) - i}: {output_largest[i][2].content} | {output_largest[i][2].jump_url} | Unique Reactions: {output_largest[i][0]}"
         output_message += line + "\n"
-    await interaction.followup.send(output_message)
+
+    await interaction.channel.send(output_message)
 
 
 def chunk_array(in_list, n):
