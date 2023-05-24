@@ -74,23 +74,31 @@ async def get_top_sprites(interaction: discord.Interaction):
     gallery = interaction.guild.get_channel(int(DISCORD_GALLERY_ID))
     now = dt.now()
     week_ago = now - timedelta(days=7)
-    all_messages = list()
+    top_sprites = list()
+    tiebreak_counter = 0
     await interaction.response.defer(ephemeral=False)
     async for message in gallery.history(after=week_ago, limit=None):
         reaction_ids = set()
         print(f"{message.content} \n done")
+        # api usage optimization: if the sum of all reaction.count is < the X most reacted to sprite,
+        # we know that we can skip this message for the top X number sprites
+        reaction_sum = sum(reaction.count for reaction in message.reactions)
+        if len(top_sprites) == top_count and reaction_sum < top_sprites[0][0]:
+            continue
         for reaction in message.reactions:
             print(reaction.emoji, ":", reaction.count)
             async for user in reaction.users():
                 reaction_ids.add(user.id)
-        print(f"{message.reactions}")
 
-        all_messages.append((message, len(reaction_ids)))
-    top_sprites = heapq.nlargest(top_count, all_messages, key=lambda x: x[1])
-    print([(item[0].content, item[1]) for item in top_sprites])
+        if len(top_sprites) == top_count:
+            heapq.heapreplace(top_sprites, (len(reaction_ids), tiebreak_counter, message))
+        else:
+            heapq.heappush(top_sprites, (len(reaction_ids), tiebreak_counter, message))
+        tiebreak_counter += 1
+    print([(item[2].content, item[0]) for item in top_sprites])
     output_message = ""
     for i in range(len(top_sprites)):
-        line = f"{i}: [{top_sprites[i][0].content}]({top_sprites[i][0].jump_url}) | Unique Reactions: {top_sprites[i][1]}"
+        line = f"{len(top_sprites) - i}: [{top_sprites[i][2].content}]({top_sprites[i][2].jump_url}) | Unique Reactions: {top_sprites[i][0]}"
         output_message += line + "\n"
     await interaction.followup.send(output_message)
 
