@@ -80,7 +80,7 @@ async def get_top_sprites(interaction: discord.Interaction):
     await interaction.response.send_message("This operation will take a while! Check back in this channel in half an hour.", ephemeral=False)
     async for message in gallery.history(after=week_ago, limit=None):
         message_counter += 1
-        if message_counter % 250 == 0:
+        if message_counter % 500 == 0:
             await interaction.channel.send(f"Parsed {message_counter} gallery posts")
         reaction_ids = set()
         # print(f"{message.content} \n done")
@@ -104,11 +104,18 @@ async def get_top_sprites(interaction: discord.Interaction):
     print([(item[2].content, item[0]) for item in top_sprites])
     output_message = ""
     output_largest = heapq.nlargest(top_count, top_sprites, key=lambda x: x[0])
+    output_messages = []
     for i in range(len(output_largest)):
         line = f"{len(output_largest) - i}: {output_largest[i][2].content} | {output_largest[i][2].jump_url} | Unique Reactions: {output_largest[i][0]}"
-        output_message += line + "\n"
+        if len(line) + len(output_message) >= 2000:
+            output_messages.append(output_message)
+            output_message = line + "\n"
+        else:
+            output_message += line + "\n"
+    output_messages.append(output_message)
 
-    await interaction.channel.send(output_message)
+    for final_output_message in output_messages:
+        await interaction.channel.send(final_output_message)
 
 
 def chunk_array(in_list, n):
