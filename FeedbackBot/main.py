@@ -1,6 +1,9 @@
 import discord
 from discord import app_commands
 from discord.utils import get
+from datetime import datetime as dt
+from datetime import timedelta
+import heapq
 import random
 import os
 
@@ -60,6 +63,33 @@ async def feedbackpls(interaction: discord.Interaction):
     # tags = ["bacon"]
     joined_tags = '\n'.join(tags)
     await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
+
+
+top_count = 15
+DISCORD_GALLERY_ID = int(os.environ["DISCORD_GALLERY_ID"])
+
+
+@tree.command(guild=discord.Object(id=GUILD_ID), description=f"gather the top {top_count} sprites from the past week",)
+async def get_top_sprites(interaction: discord.Interaction):
+    print(DISCORD_GALLERY_ID)
+    gallery = interaction.guild.get_channel(int(DISCORD_GALLERY_ID))
+    now = dt.now()
+    week_ago = now - timedelta(days=7)
+    all_messages = list()
+    async for message in gallery.history(after=week_ago, limit=None):
+        reaction_ids = set()
+        for reaction in message.reactions:
+            async for user in reaction.users():
+                reaction_ids.add(user.id)
+
+        all_messages.append((message, len(reaction_ids)))
+    top_sprites = heapq.nlargest(top_count, all_messages, key=lambda x: x[1])
+    print([(item[0].content, item[1]) for item in top_sprites])
+    output_message = ""
+    for i in range(len(top_sprites)):
+        line = f"{i}: [{top_sprites[i][0].content}]({top_sprites[i][0].jump_url}) | Unique Reactions: {top_sprites[i][1]}"
+        output_message += line + "\n"
+    await interaction.response.send_message(output_message)
 
 
 def chunk_array(in_list, n):
