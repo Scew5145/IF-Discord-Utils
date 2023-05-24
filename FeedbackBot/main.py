@@ -90,15 +90,15 @@ async def get_top_sprites(interaction: discord.Interaction):
             async for user in reaction.users():
                 reaction_ids.add(user.id)
 
-        if len(top_sprites) == top_count:
-            heapq.heapreplace(top_sprites, (len(reaction_ids), tiebreak_counter, message))
-        else:
-            heapq.heappush(top_sprites, (len(reaction_ids), tiebreak_counter, message))
+        heapq.heappush(top_sprites, (len(reaction_ids), tiebreak_counter, message))
+        if len(top_sprites) > top_count:
+            heapq.heappop(top_sprites)
         tiebreak_counter += 1
     print([(item[2].content, item[0]) for item in top_sprites])
     output_message = ""
-    for i in range(len(top_sprites)):
-        line = f"{len(top_sprites) - i}: [{top_sprites[i][2].content}]({top_sprites[i][2].jump_url}) | Unique Reactions: {top_sprites[i][0]}"
+    output_largest = heapq.nlargest(top_count, top_sprites, key=lambda x: x[0])
+    for i in range(len(output_largest)):
+        line = f"{len(output_largest) - i}: [{output_largest[i][2].content}]({output_largest[i][2].jump_url}) | Unique Reactions: {output_largest[i][0]}"
         output_message += line + "\n"
     await interaction.followup.send(output_message)
 
