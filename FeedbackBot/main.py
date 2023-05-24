@@ -71,16 +71,19 @@ DISCORD_GALLERY_ID = int(os.environ["DISCORD_GALLERY_ID"])
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"gather the top {top_count} sprites from the past week",)
 async def get_top_sprites(interaction: discord.Interaction):
-    print(DISCORD_GALLERY_ID)
     gallery = interaction.guild.get_channel(int(DISCORD_GALLERY_ID))
     now = dt.now()
     week_ago = now - timedelta(days=7)
     all_messages = list()
+    await interaction.response.defer(ephemeral=False)
     async for message in gallery.history(after=week_ago, limit=None):
         reaction_ids = set()
+        print(f"{message.content} \n done")
         for reaction in message.reactions:
+            print(reaction.emoji, ":", reaction.count)
             async for user in reaction.users():
                 reaction_ids.add(user.id)
+        print(f"{message.reactions}")
 
         all_messages.append((message, len(reaction_ids)))
     top_sprites = heapq.nlargest(top_count, all_messages, key=lambda x: x[1])
@@ -89,7 +92,7 @@ async def get_top_sprites(interaction: discord.Interaction):
     for i in range(len(top_sprites)):
         line = f"{i}: [{top_sprites[i][0].content}]({top_sprites[i][0].jump_url}) | Unique Reactions: {top_sprites[i][1]}"
         output_message += line + "\n"
-    await interaction.response.send_message(output_message)
+    await interaction.followup.send(output_message)
 
 
 def chunk_array(in_list, n):
