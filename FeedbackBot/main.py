@@ -77,7 +77,7 @@ async def get_top_sprites(interaction: discord.Interaction):
     top_sprites = list()
     tiebreak_counter = 0
     message_counter = 0
-    await interaction.response.send_message("This operation will take a while! Check back in this channel in half an hour.", ephemeral=True)
+    await interaction.response.send_message("This operation will take a while! Check back in this channel in half an hour.", ephemeral=False)
     async for message in gallery.history(after=week_ago, limit=None):
         message_counter += 1
         if message_counter % 250 == 0:
