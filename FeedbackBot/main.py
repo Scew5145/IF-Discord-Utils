@@ -58,7 +58,8 @@ async def feedbackpls(interaction: discord.Interaction):
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
         await interaction.response.send_message(output_string, ephemeral=True)
         return
-
+    if thread is not None:
+        recently_used_channels[thread.id] = dt.now() + feedback_cooldown
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
     # splitting requests for the sake of the API call
