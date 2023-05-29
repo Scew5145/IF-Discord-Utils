@@ -35,7 +35,7 @@ feebas = FeebasClient(intents=intents)
 tree = app_commands.CommandTree(feebas)
 sample_count = 7
 recently_used_channels = {}
-feedback_cooldown = timedelta(seconds=5)
+feedback_cooldown = timedelta(hours=6)
 
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"tag {sample_count} random members with the feedback giver role")
