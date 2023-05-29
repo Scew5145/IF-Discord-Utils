@@ -34,6 +34,8 @@ class FeebasClient(discord.Client):
 feebas = FeebasClient(intents=intents)
 tree = app_commands.CommandTree(feebas)
 sample_count = 7
+recently_used_channels = {}
+feedback_cooldown = timedelta(minutes=5)
 
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"tag {sample_count} random members with the feedback giver role")
@@ -41,7 +43,22 @@ async def feedbackpls(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
 
-    sample = []
+    update_allowed_channels()
+
+    thread = get(guild.threads, id=interaction.channel_id)
+    print(thread)
+    if thread is not None and thread.owner_id != interaction.user.id:
+        print(thread.owner_id)
+        print(interaction.user.id)
+        await interaction.response.send_message("Only the owner of the spritework thread can use this command.", ephemeral=True)
+        return
+
+    if thread is not None and thread.id in recently_used_channels:
+        remaining_cooldown = recently_used_channels[thread.id] - dt.now()
+        output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
+        await interaction.response.send_message(output_string, ephemeral=True)
+        return
+
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
     # splitting requests for the sake of the API call
@@ -65,6 +82,16 @@ async def feedbackpls(interaction: discord.Interaction):
     await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
 
 
+def update_allowed_channels():
+    now = dt.now()
+    cooldown_timestamp = now - feedback_cooldown
+
+    for channel, timestamp in recently_used_channels:
+        # Python3 so we can do this safely!
+        if timestamp < cooldown_timestamp:
+            del recently_used_channels[channel]
+
+
 top_count = 15
 DISCORD_GALLERY_ID = int(os.environ["DISCORD_GALLERY_ID"])
 
@@ -83,16 +110,12 @@ async def get_top_sprites(interaction: discord.Interaction):
         if message_counter % 500 == 0:
             await interaction.channel.send(f"Parsed {message_counter} gallery posts")
         reaction_ids = set()
-        # print(f"{message.content} \n done")
         # api usage optimization: if the sum of all reaction.count is < the X most reacted to sprite,
         # we know that we can skip this message for the top X number sprites
         reaction_sum = sum(reaction.count for reaction in message.reactions)
         if len(top_sprites) == top_count and reaction_sum < top_sprites[0][0]:
             continue
-        # elif len(top_sprites) != 0:
-            # print(f"reaction sum of {reaction_sum} for {message.content} passed minimum of {top_sprites[0][0]}")
         for reaction in message.reactions:
-            # print(reaction.emoji, ":", reaction.count)
             async for user in reaction.users():
                 reaction_ids.add(user.id)
 
