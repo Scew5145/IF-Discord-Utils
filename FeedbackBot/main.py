@@ -87,8 +87,9 @@ def update_allowed_channels():
     now = dt.now()
     cooldown_timestamp = now - feedback_cooldown
 
-    for channel, timestamp in recently_used_channels:
+    for channel in recently_used_channels:
         # Python3 so we can do this safely!
+        timestamp = recently_used_channels[channel]
         if timestamp < cooldown_timestamp:
             del recently_used_channels[channel]
 
