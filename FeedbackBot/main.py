@@ -46,10 +46,7 @@ async def feedbackpls(interaction: discord.Interaction):
     update_allowed_channels()
 
     thread = get(guild.threads, id=interaction.channel_id)
-    print(thread)
     if thread is not None and thread.owner_id != interaction.user.id:
-        print(thread.owner_id)
-        print(interaction.user.id)
         await interaction.response.send_message("Only the owner of the spritework thread can use this command.", ephemeral=True)
         return
 
@@ -85,12 +82,11 @@ async def feedbackpls(interaction: discord.Interaction):
 
 def update_allowed_channels():
     now = dt.now()
-    cooldown_timestamp = now - feedback_cooldown
 
     for channel in recently_used_channels:
         # Python3 so we can do this safely!
         timestamp = recently_used_channels[channel]
-        if timestamp < cooldown_timestamp:
+        if timestamp < now:
             del recently_used_channels[channel]
 
 
