@@ -228,3 +228,4 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 FeedbackBot/config.py
+FeedbackBot/polls/token.json
