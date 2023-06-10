@@ -12,8 +12,8 @@ sprite_path = "F:/InfiniteFusion/voted"
 keep_path = sprite_path + "/to keep as is"
 swap_path = sprite_path + "/to swap"
 # "F:/InfiniteFusion/MainSpritesVotingExports/392023Export.json"
-input_channel_json = "F:/InfiniteFusion/MainSpritesVotingExports/04022023Export.json"
-start_id = "1087572479096147968"
+input_channel_json = "F:/InfiniteFusion/MainSpritesVotingExports/06042023Export.json"
+start_id = "1094654399588085830"
 
 temp_folder = "F:/InfiniteFusion/voted/_temp"
 

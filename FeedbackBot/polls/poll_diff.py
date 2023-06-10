@@ -1,6 +1,7 @@
 from pathlib import Path
 import re
 import json
+import filecmp
 
 # The goal of this is to diff two sets of folders of custombattlers images and output a list of collisions as
 # a txt file. Anything beyond that should likely go elsewhere
@@ -17,15 +18,30 @@ def export_collisions(target_folder, source_folder, output_filename):
         if key == "BAD_FILES":
             continue
         if key in target_indexed:
-            collisions[key] = {
-                "new_count": source_indexed[key]["count"],
-                "old_count": target_indexed[key]["count"],
-                "new_files": [str(Path(source_folder, file).absolute()) for file in source_indexed[key]["filenames"]],
-                "old_files": [str(Path(target_folder, file).absolute()) for file in target_indexed[key]["filenames"]]
+            source_raw = [str(Path(source_folder, file).absolute()) for file in source_indexed[key]["filenames"]]
+            target_raw = [str(Path(target_folder, file).absolute()) for file in target_indexed[key]["filenames"]]
+            source_dupechecked = check_for_duplicates(target_raw, source_raw)
+            if len(source_dupechecked):
+                collisions[key] = {
+                    "new_count": source_indexed[key]["count"],
+                    "old_count": target_indexed[key]["count"],
+                    "new_files": source_dupechecked,
+                    "old_files": target_raw
             }
     with open(output_filename, 'w') as output_file:
         json.dump(collisions, output_file, indent=4)
     return
+
+
+def check_for_duplicates(target, source):
+    dupes = set()
+    for target_filename in target:
+        for source_filename in source:
+            if filecmp.cmp(target_filename, source_filename):
+                dupes.add(source_filename)
+    for dupe in dupes:
+        source.remove(dupe)
+    return source
 
 
 def index_folder(input_folder, debug_output_file=""):
