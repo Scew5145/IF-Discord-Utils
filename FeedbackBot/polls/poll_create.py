@@ -2,6 +2,8 @@ import json
 from pathlib import Path
 
 import poll_diff
+from data.pokedex import pokemon_ids
+from datetime import datetime as dt
 
 # google api includes
 from apiclient import discovery
@@ -10,19 +12,28 @@ from oauth2client import client, file, tools
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload
 
+from gcloud import storage
+from oauth2client.service_account import ServiceAccountCredentials
+
+
+MAX_RETRIES = 5
+BUCKET_NAME = 'pkif_polls_temp'
+
 
 # Meant to represent a single google form object, to be used in voting. Contains both a reference to the
 # original folders that were compared, an output target folder, and a link to the vote itself
 class GoogleForm:
-    SCOPES = ["https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/forms.body"]
+    SCOPES = ["https://www.googleapis.com/auth/forms.body"] # "https://www.googleapis.com/auth/drive.file"
     DISCOVERY_DOC_FORMS = "https://forms.googleapis.com/$discovery/rest?version=v1"
-    DISCOVERY_DOC_DRIVE = "https://forms.googleapis.com/$discovery/rest?version=v1"
 
     store = file.Storage("token.json")
     creds = None
     forms_service = None
     collisions_json = None
     drive_service = None
+    gcs_creds = None
+    gcs_client = None
+    timestamp_create_time = -1
 
     def __init__(self):
         if not self.creds or self.creds.invalid:
@@ -33,8 +44,13 @@ class GoogleForm:
 
         self.form_service = discovery.build('forms', 'v1', http=self.creds.authorize(
             Http()), discoveryServiceUrl=self.DISCOVERY_DOC_FORMS, static_discovery=False)
-        self.drive_service = discovery.build('drive', 'v3', http=self.creds.authorize(
-            Http()), static_discovery=False)
+        # self.drive_service = discovery.build('drive', 'v3', http=self.creds.authorize(
+        #    Http()), static_discovery=False)
+
+        # GCS
+        service_account_key = "F:/InfiniteFusion/GoogleAPIs/pkifautopolls-d46bf3609eb6.json"
+        self.gcs_creds = ServiceAccountCredentials.from_json_keyfile_name(service_account_key)
+        self.gcs_client = storage.Client(credentials=self.gcs_creds, project="PKIFAutoPolls")
 
     def create_google_form(self, collisions_file_name, poll_old_alts=False, limit=50):
         # Request body for creating a form
@@ -43,36 +59,7 @@ class GoogleForm:
                 "title": "Main Sprite Vote",
             }
         }
-
-        # Request body to add a multiple-choice question
-        new_question = {
-            "requests": [{
-                "createItem": {
-                    "item": {
-                        "title": "In what year did the United States land a mission on the moon?",
-                        "questionItem": {
-                            "question": {
-                                "required": True,
-                                "choiceQuestion": {
-                                    "type": "RADIO",
-                                    "options": [
-                                        {"value": "1965"},
-                                        {"value": "1967"},
-                                        {"value": "1969"},
-                                        {"value": "1971"}
-                                    ],
-                                    "shuffle": True
-                                }
-                            }
-                        },
-                    },
-                    "location": {
-                        "index": 0
-                    }
-                }
-            }]
-        }
-
+        self.timestamp_create_time = dt.now().timestamp()
         collisions_file = open(collisions_file_name, 'r')
         self.collisions_json = json.load(collisions_file)
         if self.collisions_json is None:
@@ -88,20 +75,44 @@ class GoogleForm:
         request_output = {
             "requests": []
         }
+        batched_count = 0
+        result = self.form_service.forms().create(body=new_form).execute()
         for question in questions:
             print(question)
-            print(request_output)
             request_output['requests'].append({"createItem": question})
-        # Creates the initial form
-        result = self.form_service.forms().create(body=new_form).execute()
+            batched_count += 1
+            if batched_count == 10:
+                if self.attempt_batch_update(result["formId"], request_output):
+                    request_output = {
+                        "requests": []
+                    }
+                    batched_count = 0
+                else:
+                    print(f"Failed to batch update on:\n{request_output}")
+                    return
 
-        # Adds the question to the form
-        self.form_service.forms().batchUpdate(formId=result["formId"], body=request_output).execute()
+        if batched_count > 0:
+            if not self.attempt_batch_update(result["formId"], request_output):
+                print(f"Failed to batch update on:\n{request_output}")
+                return
 
         # Prints the result to show the question has been added
         get_result = self.form_service.forms().get(formId=result["formId"]).execute()
         print(get_result)
         return
+
+    def attempt_batch_update(self, form_id, request):
+        retries = 0
+        while retries < MAX_RETRIES:
+            if retries > 0:
+                print(f"Retrying {retries}")
+            try:
+                self.form_service.forms().batchUpdate(formId=form_id, body=request).execute()
+                return True
+            except HttpError as error:
+                retries += 1
+                print(error)
+        return False
 
     def format_question(self, question_key, question_num):
         # sanity checks
@@ -116,9 +127,13 @@ class GoogleForm:
         # by definition, new_files and old_files should never have a case where the count is equal to 0, so
         # no range checks are needed for the 0 index
         image_urls = [
-            self.get_view_url_from_id(self.upload_image_to_drive(self.collisions_json[question_key]["old_files"][0])['id'])]
+            # self.get_view_url_from_id(
+            #    self.upload_image_to_drive(self.collisions_json[question_key]["old_files"][0])['id'])
+            self.upload_image_to_gcs(self.collisions_json[question_key]["old_files"][0], True)
+        ]
+
         for sprite_filename in self.collisions_json[question_key]['new_files']:
-            image_urls.append(self.get_view_url_from_id(self.upload_image_to_drive(sprite_filename)['id']))
+            image_urls.append(self.upload_image_to_gcs(sprite_filename, False))
         print(image_urls)
         options_array = []
         for index in range(len(image_urls)):
@@ -147,6 +162,16 @@ class GoogleForm:
 
         return new_question
 
+    def upload_image_to_gcs(self, image_filepath, is_target):
+        # it's possible for the two folders to have a file that's the same name, so we need to make sure
+        # that they don't collide by putting them in separate subfolders
+        sub_folder = "target/" if is_target else "source/"
+        output_filename = f"{self.timestamp_create_time}/" + sub_folder + Path(image_filepath).name
+        bucket = self.gcs_client.get_bucket(BUCKET_NAME)
+        blob = bucket.blob(output_filename)
+        blob.upload_from_filename(image_filepath)
+        return f"https://storage.googleapis.com/{BUCKET_NAME}/{output_filename}"
+
     def upload_image_to_drive(self, image_filepath):
         if not self.creds or self.creds.invalid:
             flow = client.flow_from_clientsecrets(
@@ -162,7 +187,11 @@ class GoogleForm:
             print(f"ERROR: GoogleAPI: {error}")
         return None
 
-    def get_title(self, question_key):
+    @staticmethod
+    def get_title(question_key):
+        split_ids = question_key.split(".")
+        if len(split_ids) == 2:
+            return pokemon_ids[int(split_ids[0])] + "/" + pokemon_ids[int(split_ids[1])]
         return question_key
 
     def get_view_url_from_id(self, google_drive_id):
@@ -174,7 +203,7 @@ class GoogleForm:
                 "value": "anyone",
                 "type": "anyone"
             }).execute()
-            return f"https://drive.google.com/uc?id={google_drive_id}"
+            return f"https://drive.google.com/uc?export=download&id={google_drive_id}"
         except HttpError as error:
             print(f"ERROR: GoogleAPI: {error}")
         return ""
@@ -183,4 +212,5 @@ class GoogleForm:
 if __name__ == '__main__':
     form = GoogleForm()
     # form.upload_image_to_drive("F:/Folder Full of Nothing for dumping things/214.png")
-    form.create_google_form("F:/InfiniteFusion/collision_text.json", limit=5)
+    #form.upload_image_to_gcs("F:/InfiniteFusion/Sprite_Pack_90_May_2023/Sprite Pack 90 (May 2023)/CustomBattlers/1.32b.png", False)
+    form.create_google_form("F:/InfiniteFusion/collision_text.json", limit=50)

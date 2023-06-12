@@ -2,6 +2,8 @@ from pathlib import Path
 import re
 import json
 import filecmp
+from PIL import Image
+import imagehash
 
 # The goal of this is to diff two sets of folders of custombattlers images and output a list of collisions as
 # a txt file. Anything beyond that should likely go elsewhere
@@ -35,10 +37,19 @@ def export_collisions(target_folder, source_folder, output_filename):
 
 def check_for_duplicates(target, source):
     dupes = set()
+    # check if the files are literally the same, and if not, try getting their average hash and see if they're similar there
     for target_filename in target:
         for source_filename in source:
             if filecmp.cmp(target_filename, source_filename):
                 dupes.add(source_filename)
+            else:
+                target_hash = imagehash.average_hash(Image.open(target_filename))
+                source_hash = imagehash.average_hash(Image.open(source_filename))
+                # print(source_hash)
+                # print(target_hash)
+                # print(target_filename, "\n", source_filename, source_hash - target_hash)
+                if source_hash - target_hash == 0:
+                    dupes.add(source_filename)
     for dupe in dupes:
         source.remove(dupe)
     return source
@@ -75,6 +86,6 @@ def index_folder(input_folder, debug_output_file=""):
 
 if __name__ == '__main__':
     export_collisions("F:/InfiniteFusion/Full Sprite pack 1-89 (April 2023)/Full Sprite pack 1-89 (April 2023)/CustomBattlers",
-                      "F:/InfiniteFusion/voted/output/to swap", "F:/InfiniteFusion/collision_text.json")
+                      "F:/InfiniteFusion/Sprite_Pack_90_May_2023/Sprite Pack 90 (May 2023)/CustomBattlers", "F:/InfiniteFusion/collision_text.json")
 
 
