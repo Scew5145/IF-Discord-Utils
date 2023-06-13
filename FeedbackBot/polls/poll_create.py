@@ -52,31 +52,34 @@ class GoogleForm:
         self.gcs_creds = ServiceAccountCredentials.from_json_keyfile_name(service_account_key)
         self.gcs_client = storage.Client(credentials=self.gcs_creds, project="PKIFAutoPolls")
 
-    def create_google_form(self, collisions_file_name, poll_old_alts=False, limit=50):
+    def create_google_form(self, collisions_file_name, poll_old_alts=False, update_json=True, limit=50):
         # Request body for creating a form
         new_form = {
             "info": {
-                "title": "Main Sprite Vote",
+                "title": f"Main Sprite Vote: {self.timestamp_create_time}",
             }
         }
         self.timestamp_create_time = dt.now().timestamp()
-        collisions_file = open(collisions_file_name, 'r')
+        collisions_file = open(collisions_file_name, 'w+')
         self.collisions_json = json.load(collisions_file)
         if self.collisions_json is None:
             print(f"ERROR: Failed to load {collisions_file_name} as collision file. Check file name")
             return
         questions = []
         question_count = 0
+        ids_processed = []
         for collision_id in self.collisions_json:
-            questions.append(self.format_question(collision_id, question_count))
+            questions.append(self.format_question(collision_id, question_count, poll_old_alts))
             question_count += 1
             if question_count >= limit:
                 break
+            ids_processed.append(collision_id)
         request_output = {
             "requests": []
         }
         batched_count = 0
         result = self.form_service.forms().create(body=new_form).execute()
+
         for question in questions:
             print(question)
             request_output['requests'].append({"createItem": question})
@@ -99,6 +102,10 @@ class GoogleForm:
         # Prints the result to show the question has been added
         get_result = self.form_service.forms().get(formId=result["formId"]).execute()
         print(get_result)
+        if update_json:
+            for processed_id in ids_processed:
+                self.collisions_json.remove(processed_id)
+            json.dump(self.collisions_json, collisions_file_name, indent=4)
         return
 
     def attempt_batch_update(self, form_id, request):
@@ -114,7 +121,7 @@ class GoogleForm:
                 print(error)
         return False
 
-    def format_question(self, question_key, question_num):
+    def format_question(self, question_key, question_num, poll_old_alts):
         # sanity checks
         if question_key not in self.collisions_json:
             print(f"ERROR: key {question_key} is not in collisions dict - can't create poll question")
@@ -129,8 +136,11 @@ class GoogleForm:
         image_urls = [
             # self.get_view_url_from_id(
             #    self.upload_image_to_drive(self.collisions_json[question_key]["old_files"][0])['id'])
-            self.upload_image_to_gcs(self.collisions_json[question_key]["old_files"][0], True)
         ]
+        for old_sprite_filename in self.collisions_json[question_key]['old_files']:
+            image_urls.append(self.upload_image_to_gcs(old_sprite_filename, True))
+            if not poll_old_alts:
+                break  # break after one entry if we're only polling the current main sprite
 
         for sprite_filename in self.collisions_json[question_key]['new_files']:
             image_urls.append(self.upload_image_to_gcs(sprite_filename, False))
