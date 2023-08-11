@@ -144,5 +144,32 @@ def chunk_array(in_list, n):
     for i in range(0, len(in_list), n):
         yield in_list[i:i + n]
 
+
+@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Debug Command: print thread timeouts")
+async def print_thread_cooldowns(interaction: discord.Interaction):
+    output_message = ""
+    output_messages = []
+    for channel in recently_used_channels:
+        line = f"<#{channel}>: {recently_used_channels[channel] - dt.now()}\n"
+        if len(line) + len(output_message) >= 2000:
+            output_messages.append(output_message)
+            output_message = line + "\n"
+        else:
+            output_message += line + "\n"
+
+    output_messages.append(output_message)
+    if len(output_messages) == 1 and output_message == "":
+        await interaction.response.send_message("No threads on cooldown atm", ephemeral=False)
+        return
+    sent_response = False
+    for final_output_message in output_messages:
+        if final_output_message == "":
+            continue
+        if not sent_response:
+            await interaction.response.send_message(final_output_message, ephemeral=False)
+            sent_response = True
+        else:
+            await interaction.channel.send(final_output_message)
+
 feebas.run(TOKEN)
 
