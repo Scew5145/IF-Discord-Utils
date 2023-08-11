@@ -129,7 +129,9 @@ async def get_top_sprites(interaction: discord.Interaction):
     output_largest = heapq.nlargest(top_count, top_sprites, key=lambda x: x[0])
     output_messages = []
     for i in range(len(output_largest)):
-        line = f"{i + 1}: {output_largest[i][2].content} | {output_largest[i][2].jump_url} | Unique Reactions: {output_largest[i][0]}"
+        data_text = output_largest[i][2].content.replace("<#", "")
+        data_text = data_text.replace(">", "")
+        line = f"{i + 1}: {data_text} | {output_largest[i][2].jump_url} | Unique Reactions: {output_largest[i][0]}"
         if len(line) + len(output_message) >= 2000:
             output_messages.append(output_message)
             output_message = line + "\n"
