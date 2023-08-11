@@ -151,7 +151,7 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
     output_message = ""
     output_messages = []
     for channel in recently_used_channels:
-        line = f"<#{channel}>: {recently_used_channels[channel] - dt.now()}\n"
+        line = f"<#{channel}>: {recently_used_channels[channel] - dt.now()}"
         if len(line) + len(output_message) >= 2000:
             output_messages.append(output_message)
             output_message = line + "\n"
