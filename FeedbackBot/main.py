@@ -55,8 +55,7 @@ async def feedbackpls(interaction: discord.Interaction):
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
         await interaction.response.send_message(output_string, ephemeral=True)
         return
-    if thread is not None:
-        recently_used_channels[thread.id] = dt.now() + feedback_cooldown
+
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
     # splitting requests for the sake of the API call
@@ -75,9 +74,11 @@ async def feedbackpls(interaction: discord.Interaction):
     # Used this to check statuses, and it looks like sometimes discord will cache status on the client, but these seem to be accurate most of the time
     # print([(user.name, user.status) for user in sample])
     tags = [f"<@{member.id}>" for member in sample]
-    # tags = ["bacon"]
     joined_tags = '\n'.join(tags)
     await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
+    # add it to recently_used_channels only after send_message is called, just in case it errors out (which is a thing)
+    if thread is not None:
+        recently_used_channels[thread.id] = dt.now() + feedback_cooldown
 
 
 def update_allowed_channels():
