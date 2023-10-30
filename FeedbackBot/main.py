@@ -116,8 +116,15 @@ async def get_top_sprites(interaction: discord.Interaction):
         if len(top_sprites) == top_count and reaction_sum < top_sprites[0][0]:
             continue
         for reaction in message.reactions:
-            async for user in reaction.users():
-                reaction_ids.add(user.id)
+            try:
+                async for user in reaction.users():
+                    reaction_ids.add(user.id)
+            except discord.errors.HTTPException as e:
+                if e.code == 10014:
+                    print(f"failed to find emoji for message: {message}. Skipping")
+                    continue
+                else:
+                    raise e
 
         heapq.heappush(top_sprites, (len(reaction_ids), tiebreak_counter, message))
         if len(top_sprites) > top_count:
