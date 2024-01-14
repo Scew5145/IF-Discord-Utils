@@ -6,6 +6,7 @@ from datetime import timedelta
 import heapq
 import random
 import os
+import json
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
 print(os.environ)
@@ -180,6 +181,80 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
             sent_response = True
         else:
             await interaction.channel.send(final_output_message)
+
+
+# Feedbacker inactivity tracker
+FEEDBACKERS_LAST_RESPONSE_TIME = 7  # Time to warn users about inactivity (days)
+TRACKED_RESPONSE_TIME = 30  # Number of days to pull feedback bot responses from (days)
+FEEDBACKER_UPDATE_RATE = 5 # How often to pull the feedbacker response list (minutes)
+
+# id of the spritework channel
+DISCORD_SPRITEWORK_ID = int(os.environ["DISCORD_SPRITEWORK_ID"])
+
+# User response times: Dict pointing user id --> response object.
+# response object should look like this:
+# {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int}
+user_response_times = {}
+last_update = None
+
+
+def get_feebas_responders(guild, feebas_message):
+    thread = get(guild.threads, id=feebas_message.channel_id)
+    responsive_mentions = []
+    # no limit here because spritework threads are usually short. May need to limit/chunk if too expensive api wise
+    thread_message_iter = thread.history(after=feebas_message.created_at)
+    for thread_message in thread_message_iter:
+        if len(responsive_mentions) == len(feebas_message.mentions):
+            break
+        if thread_message.author in feebas_message.mentions:
+            responsive_mentions.append(thread_message.author)
+    return responsive_mentions
+
+
+async def update_feedbacker_times(guild, feedbacker_role, force=False):
+    global last_update, FEEDBACKER_UPDATE_RATE
+    now = dt.now()
+    if not force and last_update is not None and last_update > dt.date(now - timedelta(minutes=FEEDBACKER_UPDATE_RATE)):
+        print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} minutes have passed")
+        return
+
+    last_update = now
+    ids = [member.id for member in feedbacker_role.members]
+    # Always fully reset the user response time dict - it's not saved between runs atm anyway
+    user_response_times.clear()
+    for uid in ids:
+        user_response_times[uid] = {'latestReply': None,
+                                    'pingCount': 0,
+                                    'responseCount': 0}
+
+    channel = await guild.get_channel(DISCORD_SPRITEWORK_ID)
+    start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
+    feebas_messages = await channel.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
+    for message in feebas_messages:
+        responders = get_feebas_responders(guild, message)
+        for feedbacker in message.mentions:
+            user_response_times[feedbacker.id]['latestReply'] = message.created_at
+            user_response_times[feedbacker.id]['pingCount'] += 1
+            if feedbacker in responders:
+                user_response_times[feedbacker.id]['responseCount'] += 1
+
+
+@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Debug Command - Update feedbackers now")
+async def force_update_feedbackers(interaction: discord.Interaction):
+    guild = interaction.guild
+    role = get(guild.roles, id=ROLE_ID)
+    await update_feedbacker_times(guild, role, force=True)
+    output_string = json.dumps(user_response_times, indent=2)
+    print(output_string)
+
+
+#@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
+#async def find_inactive_feedbackers(interaction: discord.Interaction):
+#
+#    guild = interaction.guild
+#    role = get(guild.roles, id=ROLE_ID)
+#    await update_feedbacker_times(guild, role)
+
 
 feebas.run(TOKEN)
 

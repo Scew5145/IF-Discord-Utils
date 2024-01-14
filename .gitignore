@@ -229,3 +229,6 @@ fabric.properties
 
 FeedbackBot/config.py
 FeedbackBot/polls/token.json
+.idea/misc.xml
+.idea/Sprites.iml
+.idea/vcs.xml
