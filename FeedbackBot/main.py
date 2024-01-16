@@ -198,15 +198,15 @@ user_response_times = {}
 last_update = None
 
 
-def get_feebas_responders(guild, thread, feebas_message):
+def get_feebas_responders(thread, feebas_message):
     responsive_mentions = []
     # no limit here because spritework threads are usually short. May need to limit/chunk if too expensive api wise
-    thread_message_iter = thread.history(after=feebas_message.created_at)
-    for thread_message in thread_message_iter:
+    # todo: if I need less API usage on this, pass the full list of messages instead of just the feebas message
+    async for message in thread.history(after=feebas_message.created_at):
         if len(responsive_mentions) == len(feebas_message.mentions):
             break
-        if thread_message.author in feebas_message.mentions:
-            responsive_mentions.append(thread_message.author)
+        if message.author in feebas_message.mentions:
+            responsive_mentions.append(message.author)
     return responsive_mentions
 
 
@@ -233,7 +233,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
-            responders = get_feebas_responders(guild, thread, message)
+            responders = get_feebas_responders(thread, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
@@ -245,7 +245,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
-            responders = get_feebas_responders(guild, thread, message)
+            responders = get_feebas_responders(thread, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
@@ -260,6 +260,7 @@ async def force_update_feedbackers(interaction: discord.Interaction):
     await update_feedbacker_times(guild, role, force=True)
     output_string = json.dumps(user_response_times, indent=2)
     print(output_string)
+    interaction.response.send_message("Finished. Check logs for output (Unless you aren't Ignus, in which case, tough")
 
 
 #@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
