@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.utils import get
 from datetime import datetime as dt
 from datetime import timedelta
+from datetime import timezone
 import heapq
 import random
 import os
@@ -52,7 +53,7 @@ async def feedbackpls(interaction: discord.Interaction):
         return
 
     if thread is not None and thread.id in recently_used_channels:
-        remaining_cooldown = recently_used_channels[thread.id] - dt.now()
+        remaining_cooldown = recently_used_channels[thread.id] - dt.now(timezone.utc)
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
         await interaction.response.send_message(output_string, ephemeral=True)
         return
@@ -79,11 +80,11 @@ async def feedbackpls(interaction: discord.Interaction):
     await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
     # add it to recently_used_channels only after send_message is called, just in case it errors out (which is a thing)
     if thread is not None:
-        recently_used_channels[thread.id] = dt.now() + feedback_cooldown
+        recently_used_channels[thread.id] = dt.now(timezone.utc) + feedback_cooldown
 
 
 def update_allowed_channels():
-    now = dt.now()
+    now = dt.now(timezone.utc)
     output_array = []
     for channel in recently_used_channels:
         timestamp = recently_used_channels[channel]
@@ -100,7 +101,7 @@ DISCORD_GALLERY_ID = int(os.environ["DISCORD_GALLERY_ID"])
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"gather the top {top_count} sprites from the past week",)
 async def get_top_sprites(interaction: discord.Interaction):
     gallery = interaction.guild.get_channel(int(DISCORD_GALLERY_ID))
-    now = dt.now()
+    now = dt.now(timezone.utc)
     week_ago = now - timedelta(days=7)
     top_sprites = list()
     tiebreak_counter = 0
@@ -161,7 +162,7 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
     output_message = ""
     output_messages = []
     for channel in recently_used_channels:
-        line = f"<#{channel}>: {recently_used_channels[channel] - dt.now()}"
+        line = f"<#{channel}>: {recently_used_channels[channel] - dt.now(timezone.utc)}"
         if len(line) + len(output_message) >= 2000:
             output_messages.append(output_message)
             output_message = line + "\n"
@@ -222,7 +223,7 @@ async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread
 
 async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
-    now = dt.now()
+    now = dt.now(timezone.utc)
     if not force and last_update is not None and last_update > dt.date(now - timedelta(minutes=FEEDBACKER_UPDATE_RATE)):
         print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} minutes have passed")
         return
