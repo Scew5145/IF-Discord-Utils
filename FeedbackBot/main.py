@@ -242,6 +242,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
                     user_response_times[feedbacker.id]['responseCount'] += 1
+    return
     # Have to pull archived threads too, just in case an added to gallery item was
     print("Finished pulling active threads. Searching archive...")
     # Technically, archived threads could be active longer than the start date, but frankly
@@ -269,7 +270,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
 async def force_update_feedbackers(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    await interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, lol",
+    await interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, lol)",
                                       ephemeral=True)
     await update_feedbacker_times(guild, role, force=True)
     # output_string = json.dumps(user_response_times, indent=2)
