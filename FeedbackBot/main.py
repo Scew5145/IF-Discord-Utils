@@ -198,8 +198,7 @@ user_response_times = {}
 last_update = None
 
 
-def get_feebas_responders(guild, feebas_message):
-    thread = get(guild.threads, id=feebas_message.channel_id)
+def get_feebas_responders(guild, thread, feebas_message):
     responsive_mentions = []
     # no limit here because spritework threads are usually short. May need to limit/chunk if too expensive api wise
     thread_message_iter = thread.history(after=feebas_message.created_at)
@@ -234,7 +233,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
-            responders = get_feebas_responders(guild, message)
+            responders = get_feebas_responders(guild, thread, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
@@ -246,7 +245,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
-            responders = get_feebas_responders(guild, message)
+            responders = get_feebas_responders(guild, thread, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
