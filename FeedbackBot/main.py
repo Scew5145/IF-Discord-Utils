@@ -213,7 +213,7 @@ async def get_feebas_responders(thread, feebas_message):
 async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread]:
     while True:
         try:
-            yield anext(archive_iterator)
+            yield await anext(archive_iterator)
         except StopAsyncIteration:
             break
         except discord.errors.NotFound as e:
