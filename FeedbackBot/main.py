@@ -231,8 +231,9 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
     print(f"Pulling active threads. Count: {len(channel.threads)}")
     for thread in channel.threads:
-        feebas_messages = await thread.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
-        for message in feebas_messages:
+        async for message in thread.history(after=start_date):
+            if message.author.id != feebas.user.id:
+                continue
             responders = get_feebas_responders(guild, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
@@ -242,8 +243,9 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # Have to pull archived threads too, just in case an added to gallery item was
     print("Finished pulling active threads. Searching archive...")
     async for thread in channel.archived_threads(limit=5000):
-        feebas_messages = await thread.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
-        for message in feebas_messages:
+        async for message in thread.history(after=start_date):
+            if message.author.id != feebas.user.id:
+                continue
             responders = get_feebas_responders(guild, message)
             for feedbacker in message.mentions:
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
