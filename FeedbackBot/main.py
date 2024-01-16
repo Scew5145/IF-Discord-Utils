@@ -247,7 +247,10 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # Technically, archived threads could be active longer than the start date, but frankly
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
-    async for thread in channel.archived_threads(after=start_date):
+    async for thread in channel.archived_threads():
+        if dt.utcfromtimestamp(thread.created_at) < start_date:
+            print(f"Finished archive: {thread.id}, {thread.created_at}, Against start date: {start_date}")
+            break
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
@@ -266,7 +269,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
 async def force_update_feedbackers(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, in which case, tough",
+    await interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, lol",
                                       ephemeral=True)
     await update_feedbacker_times(guild, role, force=True)
     # output_string = json.dumps(user_response_times, indent=2)
