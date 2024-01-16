@@ -213,7 +213,7 @@ async def get_feebas_responders(thread, feebas_message):
 async def thread_error_wrapper(archive_iterator):
     while True:
         try:
-            yield await next(archive_iterator)
+            yield next(archive_iterator)
         except StopAsyncIteration:
             break
         except discord.errors.NotFound as e:
@@ -240,6 +240,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
     print(f"Pulling active threads. Count: {len(channel.threads)}")
     for thread in channel.threads:
+        break
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
