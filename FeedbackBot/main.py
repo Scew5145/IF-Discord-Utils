@@ -241,7 +241,6 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
     print(f"Pulling active threads. Count: {len(channel.threads)}")
     for thread in channel.threads:
-        break
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
@@ -259,11 +258,13 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # Technically, archived threads could be active longer than the start date, but frankly
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
-    async for thread in thread_error_wrapper(channel.archived_threads()):
+    archive_count = 0
+    async for thread in thread_error_wrapper(channel.archived_threads(limit=500)):
+        archive_count += 1
         if thread.created_at < start_date:
-            print(f"Finished archive: {thread.id}, {thread.created_at}, Against start date: {start_date}")
-            break
-        async for message in thread.history(after=start_date):
+            print(f"Skipped archive: {thread.id}, {thread.created_at}, Against start date: {start_date} | {archive_count}")
+            continue
+        async for message in thread.history(after=start_date, limit=None):
             if message.author.id != feebas.user.id:
                 continue
             responders = await get_feebas_responders(thread, message)
