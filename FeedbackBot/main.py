@@ -211,7 +211,7 @@ def get_feebas_responders(guild, feebas_message):
     return responsive_mentions
 
 
-def update_feedbacker_times(guild, feedbacker_role, force=False):
+async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now()
     if not force and last_update is not None and last_update > dt.date(now - timedelta(minutes=FEEDBACKER_UPDATE_RATE)):
@@ -229,21 +229,34 @@ def update_feedbacker_times(guild, feedbacker_role, force=False):
 
     channel = guild.get_channel(DISCORD_SPRITEWORK_ID)
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
-    feebas_messages = channel.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
-    for message in feebas_messages:
-        responders = get_feebas_responders(guild, message)
-        for feedbacker in message.mentions:
-            user_response_times[feedbacker.id]['latestReply'] = message.created_at
-            user_response_times[feedbacker.id]['pingCount'] += 1
-            if feedbacker in responders:
-                user_response_times[feedbacker.id]['responseCount'] += 1
+    print(f"Pulling active threads. Count: {len(channel.threads)}")
+    for thread in channel.threads:
+        feebas_messages = await thread.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
+        for message in feebas_messages:
+            responders = get_feebas_responders(guild, message)
+            for feedbacker in message.mentions:
+                user_response_times[feedbacker.id]['latestReply'] = message.created_at
+                user_response_times[feedbacker.id]['pingCount'] += 1
+                if feedbacker in responders:
+                    user_response_times[feedbacker.id]['responseCount'] += 1
+    # Have to pull archived threads too, just in case an added to gallery item was
+    print("Finished pulling active threads. Searching archive...")
+    async for thread in channel.archived_threads(limit=5000):
+        feebas_messages = await thread.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
+        for message in feebas_messages:
+            responders = get_feebas_responders(guild, message)
+            for feedbacker in message.mentions:
+                user_response_times[feedbacker.id]['latestReply'] = message.created_at
+                user_response_times[feedbacker.id]['pingCount'] += 1
+                if feedbacker in responders:
+                    user_response_times[feedbacker.id]['responseCount'] += 1
 
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"Debug Command - Update feedbackers now")
 async def force_update_feedbackers(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    update_feedbacker_times(guild, role, force=True)
+    await update_feedbacker_times(guild, role, force=True)
     output_string = json.dumps(user_response_times, indent=2)
     print(output_string)
 
