@@ -6,7 +6,7 @@ from datetime import timedelta
 import heapq
 import random
 import os
-import json
+from typing import AsyncIterator
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
 print(os.environ)
@@ -210,10 +210,10 @@ async def get_feebas_responders(thread, feebas_message):
     return responsive_mentions
 
 
-async def thread_error_wrapper(archive_iterator):
+async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread]:
     while True:
         try:
-            yield next(archive_iterator)
+            yield anext(archive_iterator)
         except StopAsyncIteration:
             break
         except discord.errors.NotFound as e:
