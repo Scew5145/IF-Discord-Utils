@@ -216,7 +216,7 @@ async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread
             yield await anext(archive_iterator)
         except StopAsyncIteration:
             break
-        except discord.errors.NotFound as e:
+        except discord.errors.HTTPException as e:
             print("Failed to find a channel. Deleted? Invisible?")
 
 
@@ -259,7 +259,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
     async for thread in thread_error_wrapper(channel.archived_threads()):
-        if dt.utcfromtimestamp(thread.created_at) < start_date:
+        if thread.created_at < start_date:
             print(f"Finished archive: {thread.id}, {thread.created_at}, Against start date: {start_date}")
             break
         async for message in thread.history(after=start_date):
