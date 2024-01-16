@@ -225,7 +225,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
         user_response_times[uid] = {'latestReply': None,
                                     'pingCount': 0,
                                     'responseCount': 0}
-
+    print(f"Pulled all feedbackers. Count: {len(user_response_times)}")
     channel = guild.get_channel(DISCORD_SPRITEWORK_ID)
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
     print(f"Pulling active threads. Count: {len(channel.threads)}")
@@ -247,6 +247,9 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 continue
             responders = await get_feebas_responders(thread, message)
             for feedbacker in message.mentions:
+                # Feedbackers could have had their role removed, but previously pinged - skip them if that's the case
+                if feedbacker.id not in user_response_times:
+                    continue
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
