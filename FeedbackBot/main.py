@@ -210,6 +210,16 @@ async def get_feebas_responders(thread, feebas_message):
     return responsive_mentions
 
 
+async def thread_error_wrapper(archive_iterator):
+    while True:
+        try:
+            yield await next(archive_iterator)
+        except StopAsyncIteration:
+            break
+        except discord.errors.NotFound as e:
+            print("Failed to find a channel. Deleted? Invisible?")
+
+
 async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now()
@@ -242,13 +252,12 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
                     user_response_times[feedbacker.id]['responseCount'] += 1
-    return
     # Have to pull archived threads too, just in case an added to gallery item was
     print("Finished pulling active threads. Searching archive...")
     # Technically, archived threads could be active longer than the start date, but frankly
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
-    async for thread in channel.archived_threads():
+    async for thread in thread_error_wrapper(channel.archived_threads()):
         if dt.utcfromtimestamp(thread.created_at) < start_date:
             print(f"Finished archive: {thread.id}, {thread.created_at}, Against start date: {start_date}")
             break
