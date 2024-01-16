@@ -185,8 +185,8 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
 
 # Feedbacker inactivity tracker
 FEEDBACKERS_LAST_RESPONSE_TIME = 7  # Time to warn users about inactivity (days)
-TRACKED_RESPONSE_TIME = 30  # Number of days to pull feedback bot responses from (days)
-FEEDBACKER_UPDATE_RATE = 5 # How often to pull the feedbacker response list (minutes)
+TRACKED_RESPONSE_TIME = 7  # Number of days to pull feedback bot responses from (days)
+FEEDBACKER_UPDATE_RATE = 60  # How often to pull the feedbacker response list (minutes)
 
 # id of the spritework channel
 DISCORD_SPRITEWORK_ID = int(os.environ["DISCORD_SPRITEWORK_ID"])
@@ -244,7 +244,10 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                     user_response_times[feedbacker.id]['responseCount'] += 1
     # Have to pull archived threads too, just in case an added to gallery item was
     print("Finished pulling active threads. Searching archive...")
-    async for thread in channel.archived_threads(limit=5000):
+    # Technically, archived threads could be active longer than the start date, but frankly
+    # this is so much faster than pulling the last message from the archived thread and checking its date
+    # that it's more reasonable to do it like this
+    async for thread in channel.archived_threads(after=start_date):
         async for message in thread.history(after=start_date):
             if message.author.id != feebas.user.id:
                 continue
@@ -263,10 +266,11 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
 async def force_update_feedbackers(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
+    interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, in which case, tough",
+                                      ephemeral=True)
     await update_feedbacker_times(guild, role, force=True)
     output_string = json.dumps(user_response_times, indent=2)
     print(output_string)
-    interaction.response.send_message("Finished. Check logs for output (Unless you aren't Ignus, in which case, tough")
 
 
 #@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
