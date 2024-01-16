@@ -235,6 +235,9 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 continue
             responders = await get_feebas_responders(thread, message)
             for feedbacker in message.mentions:
+                # Feedbackers could have had their role removed, but previously pinged - skip them if that's the case
+                if feedbacker.id not in user_response_times:
+                    continue
                 user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
