@@ -269,8 +269,8 @@ async def force_update_feedbackers(interaction: discord.Interaction):
     interaction.response.send_message("Started. Check logs for output (Unless you aren't Ignus, in which case, tough",
                                       ephemeral=True)
     await update_feedbacker_times(guild, role, force=True)
-    output_string = json.dumps(user_response_times, indent=2)
-    print(output_string)
+    # output_string = json.dumps(user_response_times, indent=2)
+    print(user_response_times)
 
 
 #@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
