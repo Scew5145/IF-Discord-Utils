@@ -211,7 +211,7 @@ def get_feebas_responders(guild, feebas_message):
     return responsive_mentions
 
 
-async def update_feedbacker_times(guild, feedbacker_role, force=False):
+def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now()
     if not force and last_update is not None and last_update > dt.date(now - timedelta(minutes=FEEDBACKER_UPDATE_RATE)):
@@ -227,9 +227,9 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                                     'pingCount': 0,
                                     'responseCount': 0}
 
-    channel = await guild.get_channel(DISCORD_SPRITEWORK_ID)
+    channel = guild.get_channel(DISCORD_SPRITEWORK_ID)
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
-    feebas_messages = await channel.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
+    feebas_messages = channel.history(after=start_date).find(lambda m: m.author.id == feebas.user.id)
     for message in feebas_messages:
         responders = get_feebas_responders(guild, message)
         for feedbacker in message.mentions:
@@ -243,7 +243,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
 async def force_update_feedbackers(interaction: discord.Interaction):
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
-    await update_feedbacker_times(guild, role, force=True)
+    update_feedbacker_times(guild, role, force=True)
     output_string = json.dumps(user_response_times, indent=2)
     print(output_string)
 
