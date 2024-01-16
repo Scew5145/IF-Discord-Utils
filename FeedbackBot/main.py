@@ -186,8 +186,8 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
 
 # Feedbacker inactivity tracker
 FEEDBACKERS_LAST_RESPONSE_TIME = 7  # Time to warn users about inactivity (days)
-TRACKED_RESPONSE_TIME = 7  # Number of days to pull feedback bot responses from (days)
-FEEDBACKER_UPDATE_RATE = 60  # How often to pull the feedbacker response list (minutes)
+TRACKED_RESPONSE_TIME = 30  # Number of days to pull feedback bot responses from (days)
+FEEDBACKER_UPDATE_RATE = 48  # How often to pull the feedbacker response list (hours)
 
 # id of the spritework channel
 DISCORD_SPRITEWORK_ID = int(os.environ["DISCORD_SPRITEWORK_ID"])
@@ -224,7 +224,7 @@ async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread
 async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now(timezone.utc)
-    if not force and last_update is not None and last_update > dt.date(now - timedelta(minutes=FEEDBACKER_UPDATE_RATE)):
+    if not force and last_update is not None and last_update > dt.date(now - timedelta(hours=FEEDBACKER_UPDATE_RATE)):
         print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} minutes have passed")
         return
 
@@ -258,11 +258,12 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # Technically, archived threads could be active longer than the start date, but frankly
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
-    archive_count = 0
-    async for thread in thread_error_wrapper(channel.archived_threads(limit=500)):
-        archive_count += 1
+    skipped = 0
+    async for thread in thread_error_wrapper(channel.archived_threads(limit=None)):
+        skipped += 1
         if thread.created_at < start_date:
-            print(f"Skipped archive: {thread.id}, {thread.created_at}, Against start date: {start_date} | {archive_count}")
+            # print(f"Skipped archive: {thread.id}, {thread.created_at}, Against start date: {start_date} | {archive_count}")
+            skipped += 1
             continue
         async for message in thread.history(after=start_date, limit=None):
             if message.author.id != feebas.user.id:
@@ -276,6 +277,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
                     user_response_times[feedbacker.id]['responseCount'] += 1
+    print(f'Skipped {skipped} archived threads.')
 
 
 @tree.command(guild=discord.Object(id=GUILD_ID), description=f"Debug Command - Update feedbackers now")
