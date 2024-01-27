@@ -332,7 +332,7 @@ async def find_inactive_feedbackers(interaction: discord.Interaction, threshold:
     for feedbacker in inactive_feedbackers:
         latest_reply = user_response_times[feedbacker]['latestReply']
         if latest_reply is not None:
-            latest_reply = latest_reply.strptime('%d/%m/%y')
+            latest_reply = latest_reply.strptime('%d-%m-%y')
         line = (f"<@{feedbacker}> | "
                 f"{'{:.2f}'.format(inactive_feedbackers[feedbacker] * 100)}% | "
                 f"{latest_reply} | "
