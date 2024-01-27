@@ -48,11 +48,14 @@ async def feedbackpls(interaction: discord.Interaction):
     update_allowed_channels()
 
     thread = get(guild.threads, id=interaction.channel_id)
-    if thread is not None and thread.owner_id != interaction.user.id:
+    if thread is None:
+        await interaction.response.send_message("Failed to find the thread we're in. Something went drastically wrong. Tell Ignus", ephemeral=False)
+        return
+    if thread.owner_id != interaction.user.id:
         await interaction.response.send_message("Only the owner of the spritework thread can use this command.", ephemeral=True)
         return
 
-    if thread is not None and thread.id in recently_used_channels:
+    if thread.id in recently_used_channels:
         remaining_cooldown = recently_used_channels[thread.id] - dt.now(timezone.utc)
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
         await interaction.response.send_message(output_string, ephemeral=True)
@@ -66,14 +69,17 @@ async def feedbackpls(interaction: discord.Interaction):
     for group in split_ids:
         feedback_users += (await guild.query_members(user_ids=group, presences=True))
     online_users = [member for member in feedback_users if member.status in allowed_ping_statuses]
-    if interaction.user in online_users:
-        online_users.remove(interaction.user)
-    if sample_count <= len(online_users):
-        sample = random.sample(online_users, sample_count)
+    already_tagged = await get_already_tagged_responders(thread)
+    allowed_tag_users = [item for item in online_users if item not in already_tagged]
+    if interaction.user in allowed_tag_users:
+        allowed_tag_users.remove(interaction.user)
+    if sample_count <= len(allowed_tag_users):
+        sample = random.sample(allowed_tag_users, sample_count)
     else:
-        sample = online_users
+        sample = allowed_tag_users
 
-    # Used this to check statuses, and it looks like sometimes discord will cache status on the client, but these seem to be accurate most of the time
+    # Used this to check statuses, and it looks like sometimes discord will cache status on the client,
+    # but these seem to be accurate most of the time
     # print([(user.name, user.status) for user in sample])
     tags = [f"<@{member.id}>" for member in sample]
     joined_tags = '\n'.join(tags)
@@ -210,6 +216,14 @@ async def get_feebas_responders(thread, feebas_message):
             responsive_mentions.append(message.author)
     return responsive_mentions
 
+
+async def get_already_tagged_responders(thread):
+    all_responders_tagged = set()
+    async for message in thread.history(limit=500):
+        if message.author.id == feebas.user.id:
+            for mention in message.mentions:
+                all_responders_tagged.add(mention)
+    return all_responders_tagged
 
 async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread]:
     while True:
