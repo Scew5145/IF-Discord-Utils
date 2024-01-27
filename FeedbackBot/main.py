@@ -249,7 +249,8 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     for uid in ids:
         user_response_times[uid] = {'latestReply': None,
                                     'pingCount': 0,
-                                    'responseCount': 0}
+                                    'responseCount': 0,
+                                    'jumpUrl': None}
     print(f"Pulled all feedbackers. Count: {len(user_response_times)}")
     channel = guild.get_channel(DISCORD_SPRITEWORK_ID)
     start_date = now - timedelta(days=FEEDBACKERS_LAST_RESPONSE_TIME)
