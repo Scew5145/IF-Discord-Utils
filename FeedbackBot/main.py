@@ -200,7 +200,7 @@ DISCORD_SPRITEWORK_ID = int(os.environ["DISCORD_SPRITEWORK_ID"])
 
 # User response times: Dict pointing user id --> response object.
 # response object should look like this:
-# {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int}
+# # {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int, "jumpUrl": string}
 user_response_times = {}
 last_update = None
 
@@ -263,10 +263,11 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 # Feedbackers could have had their role removed, but previously pinged - skip them if that's the case
                 if feedbacker.id not in user_response_times:
                     continue
-                user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
                     user_response_times[feedbacker.id]['responseCount'] += 1
+                    user_response_times[feedbacker.id]['latestReply'] = message.created_at
+                    user_response_times[feedbacker.id]['jumpUrl'] = message.jump_url
     # Have to pull archived threads too, just in case an added to gallery item was
     print("Finished pulling active threads. Searching archive...")
     # Technically, archived threads could be active longer than the start date, but frankly
@@ -287,10 +288,11 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
                 # Feedbackers could have had their role removed, but previously pinged - skip them if that's the case
                 if feedbacker.id not in user_response_times:
                     continue
-                user_response_times[feedbacker.id]['latestReply'] = message.created_at
                 user_response_times[feedbacker.id]['pingCount'] += 1
                 if feedbacker in responders:
                     user_response_times[feedbacker.id]['responseCount'] += 1
+                    user_response_times[feedbacker.id]['latestReply'] = message.created_at
+                    user_response_times[feedbacker.id]['jumpUrl'] = message.jump_url
     print(f'Skipped {skipped} archived threads.')
 
 
@@ -311,14 +313,14 @@ async def find_inactive_feedbackers(interaction: discord.Interaction, threshold:
     guild = interaction.guild
     role = get(guild.roles, id=ROLE_ID)
     response_msg = (f"Started pulling feedbacker list. This may take a while if we need to pull spritework history.\n"
-                    f"the last feedback pull was at {last_update if last_update is not None else 'never'}, "
+                    f"The last feedback pull was at {last_update if last_update is not None else 'never'}, "
                     f"currently only updating every {FEEDBACKER_UPDATE_RATE} hours, the next time a inactivity command is run.\n"
                     f"A message will be sent in this channel when the process finishes.")
     await interaction.response.send_message(response_msg, ephemeral=True)
     await update_feedbacker_times(guild, role)
     inactive_feedbackers = {}
     for feedbacker in user_response_times:
-        # {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int}
+        # {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int, "jumpUrl": string}
         if user_response_times[feedbacker]['pingCount'] != 0:
             response_rate = (user_response_times[feedbacker]['responseCount'] /
                              user_response_times[feedbacker]['pingCount'])
@@ -328,9 +330,13 @@ async def find_inactive_feedbackers(interaction: discord.Interaction, threshold:
     output_message = "User | Response Rate | Last Response Time\n"
     output_messages = []
     for feedbacker in inactive_feedbackers:
+        latest_reply = user_response_times[feedbacker]['latestReply']
+        if latest_reply is not None:
+            latest_reply = latest_reply.strptime('%d/%m/%y')
         line = (f"<@{feedbacker}> | "
                 f"{'{:.2f}'.format(inactive_feedbackers[feedbacker] * 100)}% | "
-                f"{user_response_times[feedbacker]['latestReply']}")
+                f"{latest_reply} | "
+                f"{user_response_times[feedbacker]['jumpUrl']}")
         if len(line) + len(output_message) >= 2000:
             output_messages.append(output_message)
             output_message = line + "\n"
