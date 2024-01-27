@@ -239,7 +239,7 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now(timezone.utc)
     if not force and last_update is not None and last_update > dt.date(now - timedelta(hours=FEEDBACKER_UPDATE_RATE)):
-        print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} minutes have passed")
+        print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} hours have passed")
         return
 
     last_update = now
@@ -273,13 +273,13 @@ async def update_feedbacker_times(guild, feedbacker_role, force=False):
     # this is so much faster than pulling the last message from the archived thread and checking its date
     # that it's more reasonable to do it like this
     skipped = 0
-    async for thread in thread_error_wrapper(channel.archived_threads(limit=None)):
+    async for thread in thread_error_wrapper(channel.archived_threads(limit=1000000)):
         skipped += 1
         if thread.created_at < start_date:
             # print(f"Skipped archive: {thread.id}, {thread.created_at}, Against start date: {start_date} | {archive_count}")
             skipped += 1
             continue
-        async for message in thread.history(after=start_date, limit=None):
+        async for message in thread.history(after=start_date, limit=1000000):
             if message.author.id != feebas.user.id:
                 continue
             responders = await get_feebas_responders(thread, message)
@@ -305,12 +305,41 @@ async def force_update_feedbackers(interaction: discord.Interaction):
     print(user_response_times)
 
 
-#@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
-#async def find_inactive_feedbackers(interaction: discord.Interaction):
-#
-#    guild = interaction.guild
-#    role = get(guild.roles, id=ROLE_ID)
-#    await update_feedbacker_times(guild, role)
+@tree.command(guild=discord.Object(id=GUILD_ID), description=f"Audit Command - checks for users over {FEEDBACKERS_LAST_RESPONSE_TIME} days who haven't responded to a feedback ping")
+async def find_inactive_feedbackers(interaction: discord.Interaction, threshold: float):
+    global last_update, FEEDBACKER_UPDATE_RATE
+    guild = interaction.guild
+    role = get(guild.roles, id=ROLE_ID)
+    response_msg = (f"Started pulling feedbacker list. This may take a while if we need to pull spritework history.\n"
+                    f"the last feedback pull was at {last_update if last_update is not None else 'never'}, "
+                    f"currently only updating every {FEEDBACKER_UPDATE_RATE} hours, the next time a inactivity command is run.\n"
+                    f"A message will be sent in this channel when the process finishes.")
+    await interaction.response.send_message(response_msg, ephemeral=True)
+    await update_feedbacker_times(guild, role)
+    inactive_feedbackers = {}
+    for feedbacker in user_response_times:
+        # {"latestReply": timestamp (or none), "pingCount": int, "responseCount": int}
+        if user_response_times[feedbacker]['pingCount'] != 0:
+            response_rate = (user_response_times[feedbacker]['responseCount'] /
+                             user_response_times[feedbacker]['pingCount'])
+            if response_rate <= threshold:
+                inactive_feedbackers[feedbacker] = response_rate
+
+    output_message = "User | Response Rate | Last Response Time\n"
+    output_messages = []
+    for feedbacker in inactive_feedbackers:
+        line = (f"<@{feedbacker}> | "
+                f"{'{:.2f}'.format(inactive_feedbackers[feedbacker] * 100)}% | "
+                f"{user_response_times[feedbacker]['latestReply']}")
+        if len(line) + len(output_message) >= 2000:
+            output_messages.append(output_message)
+            output_message = line + "\n"
+        else:
+            output_message += line + "\n"
+    output_messages.append(output_message)
+
+    for final_output_message in output_messages:
+        await interaction.channel.send(final_output_message, silent=True)
 
 
 feebas.run(TOKEN)
