@@ -332,11 +332,12 @@ async def find_inactive_feedbackers(interaction: discord.Interaction, threshold:
     output_messages = []
     for feedbacker in inactive_feedbackers:
         latest_reply = user_response_times[feedbacker]['latestReply']
+        link_string = "N/A"
         if latest_reply is not None:
-            latest_reply = latest_reply.strptime('%d-%m-%y')
+            link_string = latest_reply.strftime('%d-%m-%y')
         line = (f"<@{feedbacker}> | "
                 f"{'{:.2f}'.format(inactive_feedbackers[feedbacker] * 100)}% | "
-                f"{latest_reply} | "
+                f"{link_string} | "
                 f"{user_response_times[feedbacker]['jumpUrl']}")
         if len(line) + len(output_message) >= 2000:
             output_messages.append(output_message)
