@@ -238,7 +238,7 @@ async def thread_error_wrapper(archive_iterator) -> AsyncIterator[discord.Thread
 async def update_feedbacker_times(guild, feedbacker_role, force=False):
     global last_update, FEEDBACKER_UPDATE_RATE
     now = dt.now(timezone.utc)
-    if not force and last_update is not None and last_update > dt.date(now - timedelta(hours=FEEDBACKER_UPDATE_RATE)):
+    if not force and last_update is not None and last_update > (now - timedelta(hours=FEEDBACKER_UPDATE_RATE)):
         print(f"Updated feedback list @ {last_update} - not updating again until {FEEDBACKER_UPDATE_RATE} hours have passed")
         return
 
