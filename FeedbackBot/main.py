@@ -108,7 +108,7 @@ DISCORD_GALLERY_ID = int(os.environ["DISCORD_GALLERY_ID"])
 async def get_top_sprites(interaction: discord.Interaction):
     gallery = interaction.guild.get_channel(int(DISCORD_GALLERY_ID))
     now = dt.now(timezone.utc)
-    week_ago = now - timedelta(days=7)
+    week_ago = now - timedelta(days=8)
     top_sprites = list()
     tiebreak_counter = 0
     message_counter = 0
