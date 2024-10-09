@@ -10,7 +10,6 @@ import os
 from typing import AsyncIterator
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
-print(os.environ)
 TOKEN = os.environ["DISCORD_TOKEN"]
 GUILD_ID = int(os.environ["DISCORD_GUILD_ID"])
 ROLE_ID = int(os.environ["DISCORD_ROLE"])
