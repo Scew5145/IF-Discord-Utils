@@ -13,7 +13,7 @@ if os.path.isfile(".env"):
     # Import our env
     for line in open(".env", "r"):
         pair = line.split("=")
-        os.environ[pair[0]] = pair[1]
+        os.environ[pair[0]] = pair[1][:-1]
         print(pair)
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
