@@ -9,10 +9,17 @@ import random
 import os
 from typing import AsyncIterator
 
+if os.path.isfile(".env"):
+    # Import our env
+    for line in open(".env", "r"):
+        pair = line.split("=")
+        os.environ[pair[0]] = pair[1]
+        print(pair)
+
 # from config import TOKEN, GUILD_ID, ROLE_ID
 TOKEN = os.environ["DISCORD_TOKEN"]
 GUILD_ID = int(os.environ["DISCORD_GUILD_ID"])
-ROLE_ID = int(os.environ["DISCORD_ROLE"])
+ROLE_ID = int(os.environ["DISCORD_ROLE_ID"])
 
 intents = discord.Intents.all()
 intents.messages = True
