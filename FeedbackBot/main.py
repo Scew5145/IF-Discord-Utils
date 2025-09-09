@@ -13,8 +13,8 @@ if os.path.isfile(".env"):
     # Import our env
     for line in open(".env", "r"):
         pair = line.split("=")
-        os.environ[pair[0]] = pair[1][:-1]
-        print(pair)
+        os.environ[pair[0]] = pair[1].strip("\n")
+        print(pair[0], os.environ[pair[0]])
 
 # from config import TOKEN, GUILD_ID, ROLE_ID
 TOKEN = os.environ["DISCORD_TOKEN"]
@@ -43,6 +43,7 @@ feebas = FeebasClient(intents=intents)
 tree = app_commands.CommandTree(feebas)
 sample_count = 7
 recently_used_channels = {}
+recent_feedback_requesters = {}
 feedback_cooldown = timedelta(hours=6)
 
 
@@ -54,13 +55,19 @@ async def feedbackpls(interaction: discord.Interaction):
     update_allowed_channels()
 
     thread = get(guild.threads, id=interaction.channel_id)
+    print(thread)
     if thread is None:
         await interaction.response.send_message("Failed to find the thread we're in. Something went drastically wrong. Tell Ignus", ephemeral=False)
         return
     if thread.owner_id != interaction.user.id:
         await interaction.response.send_message("Only the owner of the spritework thread can use this command.", ephemeral=True)
         return
+    if interaction.user.id in recent_feedback_requesters:
+        recent_feedback_requesters[interaction.user.id] += 1
+    else:
+        recent_feedback_requesters[interaction.user.id] = 1
 
+    await interaction.response.send_message("Dumb fish trying to figure out who to ping...", ephemeral=True)
     if thread.id in recently_used_channels:
         remaining_cooldown = recently_used_channels[thread.id] - dt.now(timezone.utc)
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
@@ -69,6 +76,9 @@ async def feedbackpls(interaction: discord.Interaction):
 
     allowed_ping_statuses = [discord.Status.online, discord.Status.idle]
     ids = [member.id for member in role.members]
+    for key in recent_feedback_requesters:
+        if recent_feedback_requesters[key] > 0:
+            ids.append(key)
     # splitting requests for the sake of the API call
     split_ids = list(chunk_array(ids, 100))
     feedback_users = []
@@ -83,13 +93,15 @@ async def feedbackpls(interaction: discord.Interaction):
         sample = random.sample(allowed_tag_users, sample_count)
     else:
         sample = allowed_tag_users
-
+    for member in sample:
+        if member.id in recent_feedback_requesters:
+            recent_feedback_requesters[member.id] -= 1
     # Used this to check statuses, and it looks like sometimes discord will cache status on the client,
     # but these seem to be accurate most of the time
     # print([(user.name, user.status) for user in sample])
     tags = [f"<@{member.id}>" for member in sample]
     joined_tags = '\n'.join(tags)
-    await interaction.response.send_message(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)", ephemeral=False)
+    await interaction.channel.send(f"THESE PEOPLE HAVE BEEN (forcefully) RECRUITED TO GIVE YOU FEEDBACK:\n{joined_tags}\n (feedbackers can get the Sprite Feedback Giver role removed if they don't want these pings)")
     # add it to recently_used_channels only after send_message is called, just in case it errors out (which is a thing)
     if thread is not None:
         recently_used_channels[thread.id] = dt.now(timezone.utc) + feedback_cooldown
@@ -194,6 +206,12 @@ async def print_thread_cooldowns(interaction: discord.Interaction):
             sent_response = True
         else:
             await interaction.channel.send(final_output_message)
+
+    recent_feedbacker_messages = []
+    for recent_user in recent_feedback_requesters:
+        recent_use_entry = f"<@{recent_user}>: {recent_feedback_requesters[recent_user]}"
+        print(recent_use_entry)
+
 
 
 # Feedbacker inactivity tracker
