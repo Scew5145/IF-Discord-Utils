@@ -67,7 +67,7 @@ async def feedbackpls(interaction: discord.Interaction):
     else:
         recent_feedback_requesters[interaction.user.id] = 1
 
-    await interaction.response.send_message("Dumb fish trying to figure out who to ping...", ephemeral=True)
+    await interaction.response.send_message("By using this command, you'll be pinged in someone else's thread once. Don't forget to give feedback too!!!", ephemeral=True)
     if thread.id in recently_used_channels:
         remaining_cooldown = recently_used_channels[thread.id] - dt.now(timezone.utc)
         output_string = f"This command has a cooldown in the same thread of {str(feedback_cooldown)}. Please wait {str(remaining_cooldown)}"
@@ -84,7 +84,7 @@ async def feedbackpls(interaction: discord.Interaction):
     feedback_users = []
     for group in split_ids:
         feedback_users += (await guild.query_members(user_ids=group, presences=True))
-    online_users = [member for member in feedback_users if member.status in allowed_ping_statuses]
+    online_users = [member for member in feedback_users if (member.status in allowed_ping_statuses or recent_feedback_requesters[member.id] > 0)]
     already_tagged = await get_already_tagged_responders(thread)
     allowed_tag_users = [item for item in online_users if item not in already_tagged]
     if interaction.user in allowed_tag_users:
