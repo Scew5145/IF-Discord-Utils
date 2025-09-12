@@ -79,6 +79,7 @@ async def feedbackpls(interaction: discord.Interaction):
     for key in recent_feedback_requesters:
         if recent_feedback_requesters[key] > 0:
             ids.append(key)
+    ids.remove(interaction.user.id)
     # splitting requests for the sake of the API call
     split_ids = list(chunk_array(ids, 100))
     feedback_users = []
@@ -87,8 +88,10 @@ async def feedbackpls(interaction: discord.Interaction):
     online_users = [member for member in feedback_users if (member.status in allowed_ping_statuses or (member.id in recent_feedback_requesters and recent_feedback_requesters[member.id] > 0))]
     already_tagged = await get_already_tagged_responders(thread)
     allowed_tag_users = [item for item in online_users if item not in already_tagged]
+
     if interaction.user in allowed_tag_users:
         allowed_tag_users.remove(interaction.user)
+
     if sample_count <= len(allowed_tag_users):
         sample = random.sample(allowed_tag_users, sample_count)
     else:
