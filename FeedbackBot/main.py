@@ -79,7 +79,8 @@ async def feedbackpls(interaction: discord.Interaction):
     for key in recent_feedback_requesters:
         if recent_feedback_requesters[key] > 0:
             ids.append(key)
-    ids.remove(interaction.user.id)
+    if interaction.user.id in ids:
+        ids.remove(interaction.user.id)
     # splitting requests for the sake of the API call
     split_ids = list(chunk_array(ids, 100))
     feedback_users = []
